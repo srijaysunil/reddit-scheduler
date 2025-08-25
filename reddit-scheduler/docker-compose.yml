@@ -2,6 +2,7 @@ version: "3.9"
 
 services:
   reddit-scheduler:
+  build: .  
     image: python:3.11-slim
     container_name: reddit-scheduler
     restart: unless-stopped
