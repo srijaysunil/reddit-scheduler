@@ -7,11 +7,21 @@ services:
     ports:
       - "5000:5000"
     volumes:
+      - reddit_data:/data
       - ./app:/app
     environment:
-      - REDDIT_CLIENT_ID=your_client_id
-      - REDDIT_CLIENT_SECRET=your_client_secret
-      - REDDIT_USERNAME=your_username
-      - REDDIT_PASSWORD=your_password
+      - FLASK_SECRET_KEY=change-this-to-a-secret
+      - REDDIT_CLIENT_ID=your-client-id
+      - REDDIT_CLIENT_SECRET=your-client-secret
+      - REDDIT_USERNAME=your-username
+      - REDDIT_PASSWORD=your-password
       - REDDIT_USER_AGENT=reddit-scheduler
+      - UPLOAD_DIR=/data/uploads
+      - DB_FILE=/data/posts.db
+      - APP_TIMEZONE=America/Chicago
+      - MAX_UPLOAD_MB=10
     restart: unless-stopped
+
+volumes:
+  reddit_data:
+    driver: local
