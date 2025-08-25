@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Reddit Scheduler</title>
+<style>
+body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; max-width: 900px; margin: 30px auto; padding:0 16px; }
+.card { border:1px solid #ddd; border-radius:10px; padding:16px; margin-bottom:20px; }
+label { display:block; margin-top:10px; font-weight:600; }
+input, select, textarea { width:100%; padding:8px; border:1px solid #ccc; border-radius:8px; }
+table { width:100%; border-collapse: collapse; }
+th, td { border-bottom:1px solid #eee; padding:8px; text-align:left; vertical-align:top; }
+.muted { color:#666; font-size:0.9em; }
+.status { font-weight:600; }
+.ok { color:#0a7b34; } .pend { color:#915100; } .err { color:#b00020; white-space: pre-wrap; }
+.btn { display:inline-block; padding:8px 12px; border-radius:8px; cursor:pointer; border:none; }
+.btn-primary { background:#2962ff; color:white; } .btn-danger { background:#e53935; color:white; }
+.flash { background:#f0f7ff; border:1px solid #cfe2ff; padding:10px 12px; border-radius:8px; margin-bottom:12px; }
+img { max-width:60px; max-height:60px; border-radius:4px; }
+</style>
+<script>
+function onPostTypeChange() {
+    var type = document.getElementById("post_type").value;
+    document.getElementById("link_text").style.display = (type=="link" || type=="text") ? "block":"none";
+    document.getElementById("image_row").style.display = (type=="image") ? "block":"none";
+}
+function onTargetChange() {
+    var target = document.getElementById("target_type").value;
+    document.getElementById("subredditRow").style.display = (target=="subreddit")?"block":"none";
+}
+function loadFlairs() {
+    var sub = document.getElementById("subreddit").value;
+    var flairSelect = document.getElementById("flair_id");
+    fetch(`/flairs/${sub}`)
+      .then(res => res.json())
+      .then(data => {
+        flairSelect.innerHTML = '<option value="">--optional--</option>';
+        data.forEach(f => {
+            var opt = document.createElement("option");
+            opt.value = f.id; opt.text=f.text;
+            flairSelect.add(opt);
+        });
+      });
+}
+setInterval(()=>location.reload(),60000);
+window.addEventListener("DOMContentLoaded", ()=>{ onPostTypeChange(); onTargetChange(); });
+</script>
+</head>
+<body>
+
+<h1>Reddit Scheduler</h1>
+
+{% with messages = get_flashed_messages() %}
+  {% if messages %}
+    {% for msg in messages %}
+      <div class="flash">{{ msg }}</div>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
+
+<div class="card">
+<form method="POST" enctype="multipart/form-data">
+    <label>Target</label>
+    <select name="target_type" id="target_type" onchange="onTargetChange()">
+        <option value="subreddit">Subreddit</option>
+        <option value="profile">My Profile</option>
+    </select>
+
+    <div id="subredditRow">
+        <label>Subreddit (without r/)</label>
+        <input type="text" id="subreddit" name="subreddit" onchange="loadFlairs()" placeholder="learnpython"/>
+        <label>Flair</label>
+        <select id="flair_id" name="flair_id">
+            <option value="">--optional--</option>
+        </select>
+    </div>
+
+    <label>Title</label>
+    <input type="text" name="title" placeholder="Enter post title" required />
+
+    <label>Post Type</label>
+    <select name="post_type" id="post_type" onchange="onPostTypeChange()">
+        <option value="link">Link</option>
+        <option value="text">Text</option>
+        <option value="image">Image</option>
+    </select>
+
+    <div id="link_text">
+        <label>Content / URL</label>
+        <textarea name="content" rows="3"></textarea>
+    </div>
+
+    <div id="image_row" style="display:none">
+        <label>Image File</label>
+        <input type="file" name="image_file"/>
+    </div>
+
+    <label>Post Time (Central Time)</label>
+    <input type="datetime-local" name="post_time" required />
+
+    <button type="submit" class="btn btn-primary" style="margin-top:12px;">Schedule Post</button>
+</form>
+</div>
+
+<h2>Scheduled Posts (Times in Central)</h2>
+<table>
+<tr>
+<th>Preview</th><th>Title</th><th>Type</th><th>Target</th><th>Subreddit</th><th>Flair</th><th>Post Time</th><th>Status</th><th>Last Error</th><th>Action</th>
+</tr>
+{% for p in posts %}
+<tr>
+<td>
+  {% if p[3] == "image" %}
+    <img src="/uploads/{{ p[4] }}" alt="image" />
+  {% elif p[3] == "link" %}
+    <a href="{{ p[4] }}" target="_blank" style="font-size:0.9em;">{{ p[4]|truncate(30) }}</a>
+  {% else %}
+    <span style="font-size:0.9em; color:#555;">-</span>
+  {% endif %}
+</td>
+<td>{{ p[2] }}</td>
+<td>{{ p[3] }}</td>
+<td>{{ p[10] }}</td>
+<td>{{ p[1] or "-" }}</td>
+<td>{{ p[9] or "-" }}</td>
+<td>{{ p[5]|to_central }}</td>
+<td class="status {% if p[6]==1 %}ok{% elif p[6]==0 %}pend{% else %}err{% endif %}">{% if p[6]==1 %}Posted{% else %}Pending{% endif %}</td>
+<td class="err">{{ p[7] or "" }}</td>
+<td>
+<form method="POST" action="/delete/{{ p[0] }}" style="margin:0">
+<button class="btn btn-danger" type="submit">Delete</button>
+</form>
+</td>
+</tr>
+{% endfor %}
+</table>
+
+</body>
+</html>
